@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { NotesRepository } from '@/models/index.js';
+import type { NotesRepository, UsersRepository } from '@/models/index.js';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import { QueryService } from '@/core/QueryService.js';
 import { NoteEntityService } from '@/core/entities/NoteEntityService.js';
@@ -64,6 +64,9 @@ export default class extends Endpoint<typeof meta, typeof paramDef> {
 		@Inject(DI.notesRepository)
 		private notesRepository: NotesRepository,
 
+		@Inject(DI.usersRepository)
+		private usersRepository: UsersRepository,
+
 		private noteEntityService: NoteEntityService,
 		private queryService: QueryService,
 		private roleService: RoleService,
@@ -75,6 +78,56 @@ export default class extends Endpoint<typeof meta, typeof paramDef> {
 			}
 	
 			const query = this.queryService.makePaginationQuery(this.notesRepository.createQueryBuilder('note'), ps.sinceId, ps.untilId);
+
+			// add from,start,end,reactions query
+			let username: String = '';
+			let start: Date | null = null;
+			let end: Date | null = null;
+			let reactions: Number | null = null;
+
+			// 半角スペースで分割し、該当のクエリの場合抽出する
+			const startQuery = 'start:';
+			const endQuery = 'end:';
+			const fromQuery = 'from:';
+			const reactionsQuery = 'reactions:';
+			let queryStr = '';
+			ps.query.split(' ').forEach(str => {
+				if (str.startsWith(startQuery)) {
+					const startStr = str.slice(startQuery.length);
+					start = new Date(startStr);
+				} else if (str.startsWith(endQuery)) {
+					const endStr = str.slice(endQuery.length);
+					end = new Date(endStr);
+				} else if (str.startsWith(fromQuery)) {
+					username = str.slice(fromQuery.length);
+				} else if (str.startsWith(reactionsQuery)) {
+					reactions = Number(str.slice(reactionsQuery.length));
+				} else {// 意味あるものじゃない場合、検索文字列
+					queryStr = queryStr + str + ' ';
+				}
+			});
+			ps.query = queryStr.trim();
+
+			// from句の処理(存在するユーザー名の場合、Noteをそのユーザーのみとする)
+			if (username) {
+				const user = await this.usersRepository.findOneBy({ usernameLower: username.toLowerCase() });
+				if (user) {
+					query.andWhere('note.userId = :userId', { userId: user.id });
+				}
+			}
+			// 日付の範囲条件を生成して、queryに追加
+			if (start) {
+				(start as Date).setHours(0, 0, 0, 0); // 開始日の範囲を調整
+				query.andWhere("note.createdAt >= :start", { start: start });
+			}
+			if (end) {
+				(end as Date).setHours(23, 59, 59, 999); // 終了日の範囲を調整
+				query.andWhere("note.createdAt <= :end", { end: end });
+			}
+			// scoreがreactionsに指定された数字以上
+			if (reactions) {
+				query.andWhere("note.score >= :reactions", { reactions: reactions });
+			}
 
 			if (ps.userId) {
 				query.andWhere('note.userId = :userId', { userId: ps.userId });
