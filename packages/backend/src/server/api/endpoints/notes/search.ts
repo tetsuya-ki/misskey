@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { NotesRepository, UsersRepository } from '@/models/index.js';
+import type { NotesRepository, UsersRepository, FollowingsRepository } from '@/models/index.js';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import { QueryService } from '@/core/QueryService.js';
 import { NoteEntityService } from '@/core/entities/NoteEntityService.js';
@@ -8,6 +8,7 @@ import { DI } from '@/di-symbols.js';
 import { sqlLikeEscape } from '@/misc/sql-like-escape.js';
 import { RoleService } from '@/core/RoleService.js';
 import { ApiError } from '../../error.js';
+import { Brackets } from 'typeorm';
 
 export const meta = {
 	tags: ['notes'],
@@ -67,6 +68,9 @@ export default class extends Endpoint<typeof meta, typeof paramDef> {
 		@Inject(DI.usersRepository)
 		private usersRepository: UsersRepository,
 
+		@Inject(DI.followingsRepository)
+		private followingsRepository: FollowingsRepository,
+
 		private noteEntityService: NoteEntityService,
 		private queryService: QueryService,
 		private roleService: RoleService,
@@ -84,12 +88,14 @@ export default class extends Endpoint<typeof meta, typeof paramDef> {
 			let start: Date | null = null;
 			let end: Date | null = null;
 			let reactions: Number | null = null;
+			let home: String = '';
 
 			// 半角スペースで分割し、該当のクエリの場合抽出する
 			const startQuery = 'start:';
 			const endQuery = 'end:';
 			const fromQuery = 'from:';
 			const reactionsQuery = 'reactions:';
+			const homeQuery = 'home:';
 			let queryStr = '';
 			ps.query.split(' ').forEach(str => {
 				if (str.startsWith(startQuery)) {
@@ -102,6 +108,8 @@ export default class extends Endpoint<typeof meta, typeof paramDef> {
 					username = str.slice(fromQuery.length);
 				} else if (str.startsWith(reactionsQuery)) {
 					reactions = Number(str.slice(reactionsQuery.length));
+				} else if (str.startsWith(homeQuery)) {
+					home = str.slice(homeQuery.length);
 				} else {// 意味あるものじゃない場合、検索文字列
 					queryStr = queryStr + str + ' ';
 				}
@@ -127,6 +135,32 @@ export default class extends Endpoint<typeof meta, typeof paramDef> {
 			// scoreがreactionsに指定された数字以上
 			if (reactions) {
 				query.andWhere("note.score >= :reactions", { reactions: reactions });
+			}
+
+			// home句の処理(存在するユーザー名の場合、Noteをそのユーザーとフォロワーのみ(ホームタイムライン風)とする)
+			if (home) {
+				const tagetUser = await this.usersRepository.findOneBy({ usernameLower: home.toLowerCase() });
+				if (tagetUser) {
+					const followingQuery = this.followingsRepository.createQueryBuilder('following')
+					.select('following.followeeId')
+					.where('following.followerId = :targetId');
+					// または 対象自身
+					query.orWhere('note.userId = :targetId')
+					// または 対象宛て
+					.orWhere(':targetId = ANY(note.visibleUserIds)')
+					.orWhere(':targetId = ANY(note.mentions)')
+					.orWhere(new Brackets(qb => { qb
+						// または 対象のフォロワー宛ての投稿であり、
+						.where('note.visibility = \'followers\'')
+						.andWhere(new Brackets(qb => { qb
+							// 対象がフォロワーである
+							.where(`note.userId IN (${ followingQuery.getQuery() })`)
+							// または 対象の投稿へのリプライ
+							.orWhere('note.replyUserId = :targetId');
+						}));
+					}));
+					query.setParameters({ targetId: tagetUser.id });
+				}
 			}
 
 			if (ps.userId) {
