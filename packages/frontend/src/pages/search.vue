@@ -11,6 +11,14 @@
 			</div>
 
 			<MkFoldableSection v-if="notePagination">
+				from:<アカウント名> → 指定したアカウントの投稿のみを対象とします<br>
+				home:<アカウント名> → 指定したアカウントのホームタイムライン(っぽいもの)を対象とします<br>
+				start:<日付> → 指定日付以降の投稿のみを対象とします(例: start:2023/04/01)<br>
+				end:<日付> → 指定日付以前の投稿のみを対象とします(例: end:2023/04/04)<br>
+				reactions:<リアクション数> → 指定したリアクション数以上の投稿のみを対象とします(例: reactions:4)<br>
+			</MkFoldableSection>
+
+			<MkFoldableSection v-if="notePagination">
 				<template #header>{{ i18n.ts.searchResult }}</template>
 				<MkNotes :key="key" :pagination="notePagination"/>
 			</MkFoldableSection>

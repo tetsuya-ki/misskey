@@ -267,7 +267,8 @@ onUnmounted(() => {
 
 .title {
 	min-width: 0;
-	overflow: hidden;
+	// 検索で長すぎる文字が省略されるので...
+	// overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
 	line-height: 1.1;
