@@ -144,19 +144,19 @@ export default class extends Endpoint<typeof meta, typeof paramDef> {
 					const followingQuery = this.followingsRepository.createQueryBuilder('following')
 					.select('following.followeeId')
 					.where('following.followerId = :targetId');
-					// または 対象自身
-					query.orWhere('note.userId = :targetId')
-					// または 対象宛て
-					.orWhere(':targetId = ANY(note.visibleUserIds)')
-					.orWhere(':targetId = ANY(note.mentions)')
-					.orWhere(new Brackets(qb => { qb
-						// または 対象のフォロワー宛ての投稿であり、
-						.where('note.visibility = \'followers\'')
-						.andWhere(new Brackets(qb => { qb
-							// 対象がフォロワーである
-							.where(`note.userId IN (${ followingQuery.getQuery() })`)
-							// または 対象の投稿へのリプライ
-							.orWhere('note.replyUserId = :targetId');
+					query.andWhere(new Brackets(qb => { qb
+						// または 対象自身
+						.where('note.userId = :targetId')
+						.orWhere(':targetId = ANY(note.mentions)')
+						.orWhere(new Brackets(qb => { qb
+							// または publicかhome宛ての投稿であり、
+							.where('note.visibility IN (\'home\', \'public\')')
+							.andWhere(new Brackets(qb => { qb
+								// 対象がフォロワーである
+								.where(`note.userId IN (${ followingQuery.getQuery() })`)
+								// または 対象の投稿へのリプライ
+								.orWhere('note.replyUserId = :targetId');
+							}));
 						}));
 					}));
 					query.setParameters({ targetId: tagetUser.id });
