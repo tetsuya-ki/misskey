@@ -991,6 +991,14 @@ largeNoteReactions: "ノートのリアクションを大きく表示"
 noteIdOrUrl: "ノートIDまたはURL"
 accountMigration: "アカウントの引っ越し"
 accountMoved: "このユーザーは新しいアカウントに引っ越しました："
+searchOption: "検索オプション"
+
+_searchOption:
+  from: "from:アカウント名(@の右部分) → 指定したアカウントの投稿のみを対象とします"
+  home: "home:アカウント名(@の右部分) → 指定したアカウントのホームタイムライン(っぽいもの)を対象とします"
+  start: "start:日付 → 指定日付以降の投稿のみを対象とします(例: start:2023/04/01)"
+  end: "end:日付 → 指定日付以前の投稿のみを対象とします(例: end:2023/04/04)"
+  reactions: "reactions:リアクション数 → 指定したリアクション数以上の投稿のみを対象とします(例: reactions:4)"
 
 _accountMigration:
   moveTo: "このアカウントを新しいアカウントに引っ越す"

@@ -991,6 +991,15 @@ largeNoteReactions: "Enlargen displayed reactions"
 noteIdOrUrl: "Note ID or URL"
 accountMigration: "Account Migration"
 accountMoved: "This user has moved to a new account:"
+searchOption: "Search Option"
+
+_searchOption:
+  from: "from:account name (right part of @) → target only posts of the specified account"
+  home: "home:account name (right part of @) → target the home timeline (or similar) of the specified account"
+  start: "start:date → only posts after the specified date are included (e.g. start:2023/04/01)"
+  end: "end:date → only postings before the specified date are included (e.g. end:2023/04/04)"
+  reactions: "reactions:number of reactions → only postings with the specified number of reactions or more will be included (e.g. reactions:4)"
+
 _accountMigration:
   moveTo: "Migrate this account to a different one"
   moveToLabel: "Account to move to:"
